@@ -14,17 +14,57 @@ const Mentor: React.FC = () => {
   const [input, setInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const [shouldScroll, setShouldScroll] = useState(true);
 
-  // Scroll automático al nuevo mensaje
+// Reemplaza tu const scrollToBottom actual con esta:
+const scrollToBottom = useCallback(() => {
+  if (shouldScroll && chatContainerRef.current) {
+    const container = chatContainerRef.current;
+    // Asignar directamente el scrollTop al scrollHeight fuerza el bajado
+    // sin animaciones que causen saltos en toda la página
+    container.scrollTop = container.scrollHeight;
+  }
+}, [shouldScroll]);
+
+// Efecto para scroll cuando hay nuevos mensajes o texto entrante
+useEffect(() => {
+  // Si estamos en medio de un streaming, usamos scroll instantáneo para evitar saltos
+  if (isStreaming) {
+    if (shouldScroll && chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  } else {
+    // Solo usamos scroll suave cuando es un mensaje nuevo completo (no streaming)
+    scrollToBottom(); 
+  }
+}, [chat, scrollToBottom, isStreaming, shouldScroll]);
+
+  // Detectar si el usuario está cerca del final del chat
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chat]);
+    const chatContainer = chatContainerRef.current;
+    if (!chatContainer) return;
+
+    // En tu useEffect de detección de scroll
+    const handleScroll = () => {
+    const { scrollTop, scrollHeight, clientHeight } = chatContainer;
+    // Aumentamos a 150px o 200px para que sea más "pegajoso" al fondo
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < 150;
+    setShouldScroll(isAtBottom);
+    };
+
+    chatContainer.addEventListener('scroll', handleScroll);
+    return () => chatContainer.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Manejar el envío del mensaje REAL con streaming
   const handleSend = () => {
     const trimmedInput = input.trim();
     if (trimmedInput === '') return;
 
+    // Forzar scroll al enviar mensaje
+    setShouldScroll(true);
+    
     // Añadir mensaje del usuario
     const newChat = [...chat, { type: 'user' as const, text: trimmedInput }];
     setChat(newChat);
@@ -40,7 +80,8 @@ const Mentor: React.FC = () => {
         setChat([...newChat, { type: 'ai' as const, text: accumulatedResponse }]);
       },
       () => {
-        // onComplete: ya no necesitas hacer nada adicional
+        // Cuando termina el streaming, aseguramos el scroll
+        setTimeout(scrollToBottom, 100);
       }
     );
   };
@@ -90,7 +131,7 @@ const Mentor: React.FC = () => {
 
       {/* Chat Container */}
       <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden mb-8">
-        {/* Chat Header */}
+        {/* Chat Header - CORREGIDO: sin scroll aquí */}
         <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-4 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -124,8 +165,12 @@ const Mentor: React.FC = () => {
           </div>
         </div>
 
-        {/* Chat Messages */}
-        <div className="h-[600px] overflow-y-auto p-6 space-y-6" id="chat-messages">
+        {/* Chat Messages - CORREGIDO: aquí va el scroll */}
+        <div 
+          ref={chatContainerRef}  // ¡REF CORRECTO AQUÍ!
+          className="h-[600px] overflow-y-auto p-6 space-y-6"
+          id="chat-messages"
+        >
           {chat.map((message, index) => (
             <ChatMessage key={index} message={message} />
           ))}
@@ -145,7 +190,7 @@ const Mentor: React.FC = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Area */}
+        {/* Input Area - SIN CAMBIOS */}
         <div className="border-t border-gray-100 p-4 bg-gray-50">
           <div className="flex gap-3">
             <div className="flex-1 relative">
@@ -201,7 +246,7 @@ const Mentor: React.FC = () => {
         </div>
       </div>
 
-      {/* Quick Actions */}
+      {/* Quick Actions y AI Tips - SIN CAMBIOS */}
       <div className="grid md:grid-cols-4 gap-4 mb-8">
         {[
           {
@@ -247,7 +292,6 @@ const Mentor: React.FC = () => {
         ))}
       </div>
 
-      {/* AI Tips */}
       <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-2xl p-6 border border-purple-100">
         <div className="flex items-start gap-4">
           <Brain className="w-6 h-6 text-purple-600 mt-1 flex-shrink-0" />
