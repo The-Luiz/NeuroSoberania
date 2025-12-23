@@ -1,17 +1,18 @@
-import React, { useState, useRef, useEffect } from 'react';
+// src/pages/Mentor.tsx
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Brain, MessageCircle, FileText, Target, BookOpen, 
-  Send, Mic, Video, X, ChevronRight, CheckCircle, Zap 
+  Send, Mic, Video, ChevronRight, CheckCircle, Zap 
 } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import ChatMessage from '../mentor/ChatMessage';
-import AIResponse from '../mentor/AIResponse';
+import { useGroqAI } from '../hooks/useGroqAI';
 
 const Mentor: React.FC = () => {
-  const { chat, setChat, aiPanelOpen, setAiPanelOpen } = useAppContext();
+  const { chat, setChat, setAiPanelOpen } = useAppContext();
+  const { isStreaming, streamResponse } = useGroqAI();
   const [input, setInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Scroll automático al nuevo mensaje
@@ -19,39 +20,29 @@ const Mentor: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chat]);
 
-  // Simular respuesta de IA
-  const simulateAIResponse = (message: string) => {
-    setIsTyping(true);
-    
-    // Simular tiempo de respuesta de IA
-    setTimeout(() => {
-      let response = '';
-      
-      if (message.toLowerCase().includes('python')) {
-        response = 'Python es un excelente lenguaje para comenzar. Te recomiendo enfocarte en funciones y manejo de datos. ¿Quieres que te cree un plan de estudio personalizado?';
-      } else if (message.toLowerCase().includes('bitcoin')) {
-        response = 'Bitcoin es la primera capa de soberanía financiera. Para aprenderlo bien, te sugiero primero entender los fundamentos de blockchain y luego practicar con transacciones pequeñas. ¿Te gustaría que te explique algún concepto específico?';
-      } else if (message.toLowerCase().includes('ayuda')) {
-        response = '¡Claro! Estoy aquí para ayudarte. Puedo explicarte conceptos, crear planes de estudio, revisar tu código o darte consejos profesionales. ¿En qué necesitas ayuda específicamente?';
-      } else if (message.toLowerCase().includes('plan')) {
-        response = 'Me encantaría crear un plan de estudio para ti. Para personalizarlo, ¿podrías decirme cuáles son tus objetivos principales y en qué áreas te gustaría desarrollarte?';
-      } else if (message.toLowerCase().includes('gracias')) {
-        response = '¡De nada! Siempre estoy aquí para ayudarte en tu camino hacia la autonomía. ¿Hay algo más en lo que pueda asistirte hoy?';
-      } else {
-        response = `Entiendo que quieres "${message}". Déjame pensar en la mejor manera de ayudarte con eso... ¿Podrías darme más detalles sobre lo que necesitas?`;
-      }
-      
-      setChat([...chat, { type: 'ai', text: response }]);
-      setIsTyping(false);
-    }, 1500);
-  };
-
+  // Manejar el envío del mensaje REAL con streaming
   const handleSend = () => {
-    if (input.trim() === '') return;
-    
-    setChat([...chat, { type: 'user', text: input }]);
-    simulateAIResponse(input);
+    const trimmedInput = input.trim();
+    if (trimmedInput === '') return;
+
+    // Añadir mensaje del usuario
+    const newChat = [...chat, { type: 'user' as const, text: trimmedInput }];
+    setChat(newChat);
     setInput('');
+
+    // Iniciar streaming de respuesta de IA
+    let accumulatedResponse = '';
+    streamResponse(
+      trimmedInput,
+      (chunk) => {
+        accumulatedResponse += chunk;
+        // Actualizar el último mensaje del chat con la respuesta acumulada
+        setChat([...newChat, { type: 'ai' as const, text: accumulatedResponse }]);
+      },
+      () => {
+        // onComplete: ya no necesitas hacer nada adicional
+      }
+    );
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -63,7 +54,6 @@ const Mentor: React.FC = () => {
 
   const startRecording = () => {
     setIsRecording(true);
-    // Aquí iría la lógica real de grabación de voz
     setTimeout(() => {
       setIsRecording(false);
       setInput('Explícame cómo funciona Lightning Network');
@@ -111,7 +101,7 @@ const Mentor: React.FC = () => {
                 <h3 className="font-bold">Asistente Cognitivo</h3>
                 <div className="flex items-center gap-2 text-xs opacity-90">
                   <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                  <span>Siempre disponible</span>
+                  <span>{isStreaming ? 'Escribiendo...' : 'Siempre disponible'}</span>
                 </div>
               </div>
             </div>
@@ -140,7 +130,7 @@ const Mentor: React.FC = () => {
             <ChatMessage key={index} message={message} />
           ))}
           
-          {isTyping && (
+          {isStreaming && (
             <div className="flex justify-start">
               <div className="bg-gray-100 rounded-2xl px-5 py-3 max-w-md">
                 <div className="flex space-x-1">
@@ -167,12 +157,13 @@ const Mentor: React.FC = () => {
                 className="w-full p-4 pr-12 rounded-xl border border-gray-200 focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none transition-all min-h-[56px] max-h-[120px] overflow-y-auto"
                 rows={1}
                 aria-label="Mensaje para el mentor IA"
+                disabled={isStreaming}
               />
               <button
                 onClick={handleSend}
-                disabled={input.trim() === ''}
+                disabled={input.trim() === '' || isStreaming}
                 className={`absolute right-3 bottom-3 p-1.5 rounded-full ${
-                  input.trim() === ''
+                  input.trim() === '' || isStreaming
                     ? 'text-gray-400'
                     : 'bg-purple-100 text-purple-600 hover:bg-purple-200'
                 } transition-all`}
@@ -199,6 +190,7 @@ const Mentor: React.FC = () => {
                     setTimeout(handleSend, 100);
                   }}
                   className="flex items-center gap-1 text-xs bg-purple-50 text-purple-700 px-3 py-1 rounded-full hover:bg-purple-100 transition-all"
+                  disabled={isStreaming}
                 >
                   {help.icon}
                   <span>{help.text}</span>
@@ -246,6 +238,7 @@ const Mentor: React.FC = () => {
             className={`rounded-2xl p-5 text-left border-2 border-dashed hover:border-solid transition-all ${
               action.color
             }`}
+            disabled={isStreaming}
           >
             <div className="mb-3">{action.icon}</div>
             <h4 className="font-bold mb-1">{action.title}</h4>
