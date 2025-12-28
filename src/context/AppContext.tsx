@@ -1,11 +1,22 @@
+// src/context/AppContext.tsx
 import { createContext, useContext, useState } from 'react';
-import type { ReactNode } from 'react'; // CORREGIDO: import type para ReactNode
+import type { ReactNode } from 'react';
 import type { 
   UserData, 
   Message, 
   AIHelpOption, 
   OnboardingStep 
 } from '../types';
+
+export interface Task {
+  id: string;
+  title: string;
+  description: string;
+  steps: string[];
+  solution: string;
+  reward: number; // ✅ AÑADIR ESTA PROPIEDAD AQUÍ
+  errorExamples: Record<string, string>;
+}
 
 interface AppContextType {
   currentPage: string;
@@ -21,6 +32,14 @@ interface AppContextType {
   setShowOnboarding: (show: boolean) => void;
   onboardingStep: number;
   setOnboardingStep: (step: number) => void;
+  currentTask: Task | null;
+  setCurrentTask: (task: Task | null) => void;
+  taskFeedback: string;
+  setTaskFeedback: (feedback: string) => void;
+  taskStep: number;
+  setTaskStep: (step: number) => void;
+  taskCompleted: boolean;
+  setTaskCompleted: (completed: boolean) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -34,6 +53,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [aiPanelOpen, setAiPanelOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(true);
   const [onboardingStep, setOnboardingStep] = useState(0);
+  
+  // ✅ CORREGIDO: los estados de tarea deben estar DENTRO del componente
+  const [currentTask, setCurrentTask] = useState<Task | null>(null);
+  const [taskStep, setTaskStep] = useState<number>(0);
+  const [taskFeedback, setTaskFeedback] = useState<string>('');
+  const [taskCompleted, setTaskCompleted] = useState<boolean>(false);
   
   // Datos simulados - en producción venirían de una API
   const userData: UserData = {
@@ -74,7 +99,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       showOnboarding,
       setShowOnboarding,
       onboardingStep,
-      setOnboardingStep
+      setOnboardingStep,
+      currentTask,
+      setCurrentTask,
+      taskFeedback,
+      setTaskFeedback,
+      taskStep,
+      setTaskStep,
+      taskCompleted,
+      setTaskCompleted,
     }}>
       {children}
     </AppContext.Provider>

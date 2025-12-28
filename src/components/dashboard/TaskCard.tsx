@@ -1,16 +1,60 @@
+// src/components/dashboard/TaskCard.tsx
 import React from 'react';
 import { CheckCircle, Clock, ArrowRight } from 'lucide-react';
+import { useAppContext, type Task } from '../../context/AppContext';
 
 interface TaskCardProps {
   tasks: number;
 }
 
 const TaskCard: React.FC<TaskCardProps> = ({ tasks }) => {
-  const pendingTasks = [
-    { id: 1, title: 'Completar módulo Python', time: '15 min', reward: 500 },
-    { id: 2, title: 'Debug API Lightning', time: '30 min', reward: 750 },
-    { id: 3, title: 'Revisar documento técnico', time: '45 min', reward: 300 },
+  const { setCurrentTask, setTaskStep, setTaskCompleted, setTaskFeedback } = useAppContext();
+  
+  const pendingTasks: Task[] = [
+    { 
+      id: 'task-1',
+      title: 'Completar módulo Python',
+      description: 'Aprende conceptos básicos de programación',
+      steps: ["Declara una variable 'edad' con tu edad", "Crea una variable 'nombre' con tu nombre", "Imprime ambos valores en la consola"],
+      solution: "edad = 30\nnombre = 'Juan'\nprint(f'Mi nombre es {nombre} y tengo {edad} años')",
+      reward: 500,
+      errorExamples: {
+        "edad = '30'": "Error: Debes usar un número, no una cadena para la edad",
+        "print('Mi edad es ' + edad)": "Error: No puedes concatenar cadenas con números sin convertirlos primero"
+      }
+    },
+    { 
+      id: 'task-2',
+      title: 'Debug API Lightning',
+      description: 'Soluciona problemas en la API',
+      steps: ["Identifica el error en el endpoint", "Revisa los logs de transacciones", "Prueba con diferentes parámetros"],
+      solution: "curl -X POST https://api.ln.example/pay -d '{\"invoice\": \"lnbc...\", \"amount\": 100}'",
+      reward: 750,
+      errorExamples: {
+        "invoice sin monto": "Error: Las facturas de Lightning deben incluir el monto",
+        "timeout": "Error: El nodo puede estar offline, intenta con otro endpoint"
+      }
+    },
+    { 
+      id: 'task-3',
+      title: 'Revisar documento técnico',
+      description: 'Revisar y mejorar documentación',
+      steps: ["Lee la documentación existente", "Identifica secciones confusas", "Escribe ejemplos claros"],
+      solution: "# Ejemplo de uso\n```python\nimport lightning\ninvoice = lightning.create_invoice(100)\n```",
+      reward: 300,
+      errorExamples: {
+        "ejemplo sin código": "Error: La documentación técnica requiere ejemplos de código reales",
+        "parámetros incompletos": "Error: Especifica todos los parámetros requeridos y opcionales"
+      }
+    }
   ];
+
+  const handleStartTask = (task: Task) => {
+    setCurrentTask(task);
+    setTaskStep(0);
+    setTaskCompleted(false);
+    setTaskFeedback('');
+  };
 
   return (
     <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
@@ -20,26 +64,27 @@ const TaskCard: React.FC<TaskCardProps> = ({ tasks }) => {
           <div className="text-2xl font-bold text-purple-600 mt-1">{tasks}</div>
         </div>
         <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center text-purple-600">
-          <CheckCircle className="w-6 h-6" />
+          <CheckCircle className="w-6 h-6"/>
         </div>
       </div>
-
+      
       <div className="space-y-3 mb-5">
         {pendingTasks.map((task) => (
-          <div 
-            key={task.id} 
+          <div
+            key={task.id}
             className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all cursor-pointer"
+            onClick={() => handleStartTask(task)}
           >
             <div className="flex items-center gap-3 min-w-0">
               <div className="bg-green-100 p-1.5 rounded-full">
-                <CheckCircle className="w-4 h-4 text-green-600" />
+                <CheckCircle className="w-4 h-4 text-green-600"/>
               </div>
               <div className="min-w-0">
                 <div className="font-medium text-sm text-gray-800 truncate">{task.title}</div>
                 <div className="flex items-center gap-2 mt-0.5">
                   <div className="flex items-center gap-1 text-xs text-gray-500">
-                    <Clock className="w-3 h-3" />
-                    <span>{task.time}</span>
+                    <Clock className="w-3 h-3"/>
+                    <span>15 min</span>
                   </div>
                   <div className="flex items-center gap-1 text-xs text-orange-600 font-medium">
                     <span>+{task.reward} sats</span>
@@ -47,14 +92,14 @@ const TaskCard: React.FC<TaskCardProps> = ({ tasks }) => {
                 </div>
               </div>
             </div>
-            <ArrowRight className="w-4 h-4 text-gray-400" />
+            <ArrowRight className="w-4 h-4 text-gray-400"/>
           </div>
         ))}
       </div>
-
+      
       <button className="w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white py-2.5 rounded-lg font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2">
         <span>Ver todas las tareas</span>
-        <ArrowRight className="w-4 h-4" />
+        <ArrowRight className="w-4 h-4"/>
       </button>
     </div>
   );

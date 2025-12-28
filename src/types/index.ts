@@ -71,3 +71,24 @@ export interface Job {
   tags: string[];
   verified: boolean;
 }
+// src/types/index.ts
+
+export interface Task {
+  id: string;
+  title: string;
+  description: string;
+  steps: string[];
+  solution: string;
+  errorExamples: Record<string, string>;
+}
+
+export interface Module {
+  title: string;
+  progress: number;
+  reward: number;
+  time: number;
+  done: boolean;
+  task?: Task; // La tarea es opcional
+}
+
+// Puedes mover aquí también UserData, Message, etc. si quieres limpiar AppContext
