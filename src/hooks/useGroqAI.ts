@@ -9,12 +9,12 @@ const groq = new Groq({
 
 // Prompt original para el chat de ayuda
 const CHAT_SYSTEM_PROMPT = `Soy un lóbulo frontal sintético para estudiantes neurodivergentes:
- traduzco complejidad en pasos lineales, presento una sola decisión por vez, doy feedback
- visual inmediato, vinculo aprendizaje a aplicación práctica, uso lenguaje simple y
- analogías, divido tareas en micro-pasos, elimino ambigüedad y priorizo demostración
+ traduzco complejidad en pasos lineales, presento una sola decisión por vez, doy feedback 
+ visual inmediato, vinculo aprendizaje a aplicación práctica, uso lenguaje simple y 
+ analogías, divido tareas en micro-pasos, elimino ambigüedad y priorizo demostración 
  sobre teoría.`;
 
-// Nuevo Prompt específico para validación
+// Prompt mejorado para validación (JSON)
 const VALIDATOR_SYSTEM_PROMPT = `
 Soy un validador de ejercicios especializado en estudiantes neurodivergentes: 
 evalúo con claridad extrema y feedback constructivo, priorizo la lógica funcional sobre la sintaxis perfecta, 
@@ -26,9 +26,9 @@ para dar certeza matemática y reducir ansiedad ejecutiva.
 
 export const useGroqAI = () => {
   const [isStreaming, setIsStreaming] = useState(false);
-  const [isValidating, setIsValidating] = useState(false); // Nuevo estado para carga
+  const [isValidating, setIsValidating] = useState(false);
   
-  // Tu función original de streaming (para el chat)
+  // 1. Función para el chat (streaming)
   const streamResponse = async (
     userMessage: string,
     onChunk: (chunk: string) => void,
@@ -61,21 +61,21 @@ export const useGroqAI = () => {
     }
   };
 
-  // ✅ NUEVA FUNCIÓN: Validar respuesta
+  // 2. Función para validar respuestas (JSON)
   const validateAnswer = async (
-    questionContext: string, // Descripción del paso
-    userAnswer: string,      // Lo que escribió el usuario
-    expectedSolution?: string // Solución ideal (opcional, ayuda a la IA)
+    questionContext: string, 
+    userAnswer: string,      
+    expectedSolution?: string 
   ): Promise<{ correct: boolean; feedback: string }> => {
     setIsValidating(true);
     try {
       const prompt = `
         Contexto del ejercicio: ${questionContext}
-        Solución esperada (referencia): ${expectedSolution || 'No provista'}
+        Solución ideal (referencia): ${expectedSolution || 'No provista'}
         
-        Respuesta del usuario a evaluar: "${userAnswer}"
+        Respuesta del estudiante: "${userAnswer}"
         
-        Evalúa si la respuesta cumple el objetivo. Responde SOLO con el JSON.
+        Evalúa y devuelve SOLO el JSON.
       `;
 
       const completion = await groq.chat.completions.create({
@@ -84,8 +84,8 @@ export const useGroqAI = () => {
           { role: 'user', content: prompt }
         ],
         model: "llama-3.1-8b-instant",
-        temperature: 0, // Temperatura 0 para ser más determinista y lógico
-        response_format: { type: "json_object" } // Forzamos modo JSON (soportado en Llama 3.1)
+        temperature: 0, 
+        response_format: { type: "json_object" } 
       });
 
       const responseContent = completion.choices[0]?.message?.content;
@@ -105,5 +105,49 @@ export const useGroqAI = () => {
     }
   };
 
-  return { isStreaming, isValidating, streamResponse, validateAnswer };
+  // 3. ✅ NUEVA FUNCIÓN: Generar Pistas
+  const generateHint = async (
+    taskContext: string,
+    currentStep: string,
+    userAttempt: string
+  ): Promise<string> => {
+    setIsStreaming(true); // Reusamos el estado de loading visual (o podrías crear uno isHinting)
+    try {
+      const prompt = `
+        Contexto general: ${taskContext}
+        Paso actual que intenta resolver: ${currentStep}
+        Lo que el usuario ha escrito hasta ahora: "${userAttempt}"
+        
+        ACTÚA COMO UN TUTOR SOCRÁTICO AMABLE. 
+        El usuario está atascado. NO le des la respuesta directa ni escribas el código por él.
+        Dames una PISTA breve (máximo 1 frase) o una pregunta guía que le ayude a deducir la respuesta por sí mismo.
+        Si el usuario escribió algo incorrecto, señala suavemente qué parte revisar sin regañar.
+      `;
+  
+      const completion = await groq.chat.completions.create({
+        messages: [
+          { role: 'system', content: "Eres un tutor experto que da pistas sutiles y motivadoras." },
+          { role: 'user', content: prompt }
+        ],
+        model: "llama-3.1-8b-instant",
+        temperature: 0.7,
+      });
+  
+      return completion.choices[0]?.message?.content || "Revisa la sintaxis básica e intenta de nuevo.";
+    } catch (error) {
+      console.error("Error generando pista:", error);
+      return "No pude generar una pista en este momento.";
+    } finally {
+      setIsStreaming(false);
+    }
+  };
+
+  // ✅ IMPORTANTE: Aquí es donde faltaba exportar generateHint
+  return { 
+    isStreaming, 
+    isValidating, 
+    streamResponse, 
+    validateAnswer, 
+    generateHint 
+  };
 };

@@ -1,6 +1,6 @@
 // src/components/learning/TaskInterface.tsx
 import React, { useState } from 'react';
-import { X, Lightbulb, Zap, Loader2 } from 'lucide-react'; // Importamos Loader2 para la animación
+import { X, Lightbulb, Zap, Loader2, HelpCircle } from 'lucide-react'; // Añadí HelpCircle por si acaso
 import { useAppContext } from '../../context/AppContext';
 import type { Task } from '../../context/AppContext';
 
@@ -8,26 +8,25 @@ interface TaskInterfaceProps {
   task: Task;
   onClose: () => void;
   onCheckAnswer: (answer: string) => void;
-  isValidating?: boolean; // ✅ NUEVO: Prop para saber si la IA está pensando
+  onGetHint?: (currentInput: string) => void; // ✅ Prop para pedir pista
+  isValidating?: boolean;
 }
 
 const TaskInterface: React.FC<TaskInterfaceProps> = ({ 
   task, 
   onClose, 
   onCheckAnswer,
-  isValidating = false // Valor por defecto false
+  onGetHint, // Destructuramos la nueva función
+  isValidating = false 
 }) => {
   const { 
     taskStep, 
-    setTaskStep, 
     taskFeedback, 
-    setTaskFeedback, 
-    setTaskCompleted 
+    setTaskFeedback 
   } = useAppContext();
   
   const [userAnswer, setUserAnswer] = useState('');
 
-  // ✅ Función interna para verificar
   const handleVerifyAnswer = () => {
     if (!userAnswer.trim()) return;
     onCheckAnswer(userAnswer); 
@@ -69,7 +68,7 @@ const TaskInterface: React.FC<TaskInterfaceProps> = ({
             </div>
             
             <div className="space-y-6">
-              {/* Mostrar solo el paso actual */}
+              {/* Paso actual */}
               <div className="bg-gray-50 p-5 rounded-xl border border-gray-200 transition-all">
                 <div className="flex items-center gap-2 mb-3">
                   <span className="w-6 h-6 bg-purple-100 text-purple-700 rounded-full flex items-center justify-center font-bold text-sm">
@@ -88,7 +87,7 @@ const TaskInterface: React.FC<TaskInterfaceProps> = ({
                     setUserAnswer(e.target.value);
                     if (taskFeedback) setTaskFeedback(''); 
                   }}
-                  disabled={isValidating} // Deshabilitar mientras piensa
+                  disabled={isValidating}
                   className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent min-h-[150px] resize-y transition-colors font-mono text-sm
                     ${isValidating ? 'bg-gray-50 text-gray-500' : 'bg-white border-gray-300'}
                   `}
@@ -96,7 +95,7 @@ const TaskInterface: React.FC<TaskInterfaceProps> = ({
                   spellCheck={false}
                 />
                 
-                {/* Panel de Feedback */}
+                {/* Feedback */}
                 {taskFeedback && (
                   <div className={`mt-4 p-4 rounded-lg flex items-start gap-3 animate-in fade-in slide-in-from-top-2 ${
                     taskFeedback.includes('✅') ? 'bg-green-50 border border-green-200 text-green-800' : 
@@ -110,43 +109,64 @@ const TaskInterface: React.FC<TaskInterfaceProps> = ({
                   </div>
                 )}
                 
-                {/* Botones de Acción */}
-                <div className="mt-6 flex justify-between items-center pt-4 border-t border-gray-100">
+                {/* ✅ SECCIÓN DE BOTONES CORREGIDA */}
+                <div className="mt-6 pt-6 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+                  
+                  {/* Botón Izquierdo: Salir */}
                   <button
                     onClick={onClose}
-                    className="px-6 py-3 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition-colors"
+                    className="px-4 py-2 text-gray-500 font-medium hover:bg-gray-100 hover:text-gray-700 rounded-lg transition-colors text-sm"
                   >
                     Salir temporalmente
                   </button>
                   
-                  {/* ✅ BOTÓN DE VERIFICACIÓN MODIFICADO */}
-                  <button
-                    onClick={handleVerifyAnswer}
-                    disabled={!userAnswer.trim() || !!taskFeedback.includes('✅') || isValidating}
-                    className={`px-8 py-3 rounded-xl font-bold flex items-center gap-2 shadow-sm transition-all transform active:scale-95 ${
-                      userAnswer.trim() && !taskFeedback.includes('✅') && !isValidating
-                        ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:shadow-lg hover:-translate-y-0.5' 
-                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                    }`}
-                  >
-                    {isValidating ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        Analizando...
-                      </>
-                    ) : (
-                      <>
-                        <Zap className={`w-5 h-5 ${userAnswer.trim() ? 'fill-current' : ''}`} />
-                        Verificar Respuesta
-                      </>
+                  {/* Grupo Derecho: Pista y Verificar */}
+                  <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                    
+                    {/* Botón de Pista (Solo aparece si la prop onGetHint existe) */}
+                    {onGetHint && (
+                      <button
+                        onClick={() => onGetHint(userAnswer)}
+                        disabled={isValidating}
+                        className="px-4 py-3 text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-xl font-semibold transition-colors flex items-center gap-2"
+                        title="Pedir una pista a la IA"
+                      >
+                        <HelpCircle className="w-5 h-5" />
+                        <span className="hidden sm:inline">Pedir Pista</span>
+                      </button>
                     )}
-                  </button>
+
+                    {/* Botón Principal: Verificar */}
+                    <button
+                      onClick={handleVerifyAnswer}
+                      disabled={!userAnswer.trim() || !!taskFeedback.includes('✅') || isValidating}
+                      className={`px-8 py-3 rounded-xl font-bold flex items-center gap-2 shadow-sm transition-all transform active:scale-95 ${
+                        userAnswer.trim() && !taskFeedback.includes('✅') && !isValidating
+                          ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:shadow-lg hover:-translate-y-0.5' 
+                          : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      }`}
+                    >
+                      {isValidating ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          Analizando...
+                        </>
+                      ) : (
+                        <>
+                          <Zap className={`w-5 h-5 ${userAnswer.trim() ? 'fill-current' : ''}`} />
+                          Verificar
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
+                {/* Fin Sección Botones */}
+
               </div>
             </div>
           </div>
           
-          {/* Progreso visual */}
+          {/* Barra de Progreso */}
           <div className="mt-8 pt-6 pb-2">
             <div className="flex justify-between items-center mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
               <span>Progreso de la tarea</span>

@@ -1,21 +1,18 @@
 // src/pages/Learning.tsx
-import React, { useState } from 'react'; // Eliminado useEffect si no se usa
-import { 
-  Brain
-} from 'lucide-react';
+import React from 'react';
+import { Brain } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
 import ModuleCard from '../components/learning/ModuleCard';
 import TaskCard from '../components/dashboard/TaskCard';
 import TaskInterface from '../components/learning/TaskInterface';
-import { useGroqAI } from '../hooks/useGroqAI'; // ✅ Importamos el hook
+import { useGroqAI } from '../hooks/useGroqAI';
 
-// Definir la interfaz Task
 export interface Task {
   id: string;
   title: string;
   description: string;
   steps: string[];
-  solution: string;
+  solution: string; // Referencia para la IA
   reward: number;
   errorExamples: Record<string, string>;
 }
@@ -34,17 +31,17 @@ const Learning: React.FC = () => {
     setAiPanelOpen,
     currentTask, 
     taskStep, 
-    taskFeedback, 
     setCurrentTask,
     setTaskStep,
     setTaskCompleted,
     setTaskFeedback
   } = useAppContext();
 
-  // ✅ Inicializamos el hook de IA
-  const { validateAnswer, isValidating } = useGroqAI();
+  // ✅ Traemos validateAnswer Y generateHint
+  // Nota: Asegúrate de haber agregado generateHint a tu hook useGroqAI
+  const { validateAnswer, generateHint, isValidating, isStreaming } = useGroqAI();
   
-  // Datos de los módulos
+  // Datos de los módulos REFACTORIZADOS para ser más atómicos
   const learningModules: Module[] = [
     { 
       title: 'Fundamentos Python', 
@@ -55,17 +52,16 @@ const Learning: React.FC = () => {
       task: {
         id: 'python-1',
         title: 'Variables y Tipos de Datos',
-        description: 'Aprende a declarar variables y trabajar con diferentes tipos de datos en Python',
+        description: 'Aprende a declarar variables básicas.',
         steps: [
-          "Declara una variable 'edad' con tu edad",
-          "Crea una variable 'nombre' con tu nombre",
-          "Imprime ambos valores en la consola"
+          "Declara una variable llamada 'edad' asignándole el valor 25",
+          "Declara una variable 'nombre' con el texto 'Ana'",
+          "Usa print() para mostrar la variable nombre"
         ],
-        solution: "edad = 30\nnombre = 'Juan'\nprint(f'Mi nombre es {nombre} y tengo {edad} años')",
+        solution: "edad = 25\nnombre = 'Ana'\nprint(nombre)",
         reward: 500,
         errorExamples: {
-          "edad = '30'": "Error: Debes usar un número, no una cadena para la edad",
-          "print('Mi edad es ' + edad)": "Error: No puedes concatenar cadenas con números sin convertirlos"
+          "edad = '25'": "Los números no llevan comillas.",
         }
       }
     },
@@ -78,93 +74,101 @@ const Learning: React.FC = () => {
       task: undefined
     },
     { 
-      title: 'Análisis de Datos', 
+      title: 'Intro a Datos (Listas)', 
       progress: 30, 
       reward: 1000, 
       time: 25, 
       done: false,
       task: {
         id: 'data-1',
-        title: 'Análisis de Datos Básico',
-        description: 'Realiza un análisis simple de un conjunto de datos',
+        title: 'Estructuras de Datos Básicas',
+        description: 'Antes de usar Pandas, aprendamos a manejar listas nativas.',
         steps: [
-          "Importa la librería pandas",
-          "Carga un archivo CSV de muestra",
-          "Muestra las primeras 5 filas del dataset"
+          "Crea una lista llamada 'precios' con los valores: 100, 200 y 300",
+          "Calcula la suma de la lista usando sum(precios) y guárdala en 'total'",
+          "Imprime el resultado de 'total'"
         ],
-        solution: "import pandas as pd\ndf = pd.read_csv('datos.csv')\nprint(df.head())",
+        solution: "precios = [100, 200, 300]\ntotal = sum(precios)\nprint(total)",
         reward: 1000,
         errorExamples: {
-          "import pandas": "Error: Debes importar pandas como 'import pandas as pd'",
-          "pd.read_csv('datos.csv')": "Error: Debes asignar el resultado a una variable"
+          "precios = (100, 200)": "Usa corchetes [] para listas, no paréntesis.",
+          "sum = precios": "La función es sum(variable)."
         }
       }
     },
     { 
-      title: 'Lightning Network',
+      title: 'Lightning CLI',
       progress: 0, 
       reward: 1500, 
       time: 30, 
       done: false,
       task: {
         id: 'lightning-1',
-        title: 'Pagos en Lightning',
-        description: 'Realiza un pago simple en la red Lightning',
+        title: 'Comandos de Nodo (Simulación)',
+        description: 'Aprende los comandos básicos para controlar un nodo Lightning.',
         steps: [
-          "Abre tu billetera Lightning",
-          "Copia la factura de pago",
-          "Envía 100 sats al destinatario"
+          "Escribe el comando para ver la información del nodo (getinfo)",
+          "Escribe el comando para crear una factura de 500 sats (addinvoice)",
+          "Escribe el comando para pagar una factura (payinvoice <codigo>)"
         ],
-        solution: "1. Entra a tu billetera\n2. Busca 'Enviar'\n3. Pega la factura\n4. Ingresa 100 sats\n5. Confirma",
+        solution: "lncli getinfo\nlncli addinvoice 500\nlncli payinvoice lnbc1...",
         reward: 1500,
         errorExamples: {
-          "Envía 100 sats sin factura": "Error: Necesitas una factura válida para enviar"
+          "getinfo": "Te falta el prefijo del programa: 'lncli getinfo'",
+          "addinvoice": "Debes especificar el monto o usar argumentos."
         }
       }
     }
   ];
 
-  // ✅ FUNCIÓN CORREGIDA CON IA
+  // Lógica de Validación (Ya la tenías, se mantiene igual)
   const handleCheckAnswer = async (userAnswer: string) => {
     if (!currentTask) return;
-    
-    // 1. Feedback visual inmediato
     setTaskFeedback('🤖 Analizando tu respuesta...');
 
     try {
-      // 2. Preparar contexto para la IA
       const currentStepDescription = currentTask.steps[taskStep];
       const taskContext = `Tarea: ${currentTask.title}. Objetivo del paso actual: ${currentStepDescription}`;
 
-      // 3. Llamar a la IA para validar
       const result = await validateAnswer(
         taskContext,
         userAnswer,
-        currentTask.solution // Pasamos la solución como referencia (opcional)
+        currentTask.solution
       );
 
-      // 4. Procesar respuesta de la IA
       if (result.correct) {
         setTaskFeedback(`✅ ${result.feedback}`);
-        
-        // Si es el último paso
         if (taskStep === currentTask.steps.length - 1) {
           setTimeout(() => {
             setTaskCompleted(true);
-            setTaskFeedback(`🎉 ¡Tarea completada! +${currentTask.reward || 500} sats han sido añadidos a tu billetera.`);
+            setTaskFeedback(`🎉 ¡Tarea completada! +${currentTask.reward} sats añadidos.`);
           }, 2000);
         } else {
-          // Siguiente paso
           setTimeout(handleNextStep, 2000);
         }
       } else {
-        // Respuesta incorrecta según la IA
         setTaskFeedback(`⚠️ ${result.feedback}`);
       }
-
     } catch (error) {
-      console.error(error);
-      setTaskFeedback('❌ Hubo un error al conectar con el tutor inteligente. Inténtalo de nuevo.');
+      setTaskFeedback('❌ Error de conexión con el tutor.');
+    }
+  };
+
+  // ✅ NUEVA LÓGICA: Botón de Ayuda
+  const handleGetHint = async (currentUserInput: string) => {
+    if (!currentTask) return;
+    setTaskFeedback('🤔 Pensando una pista...');
+    
+    // Si no tienes generateHint en el hook aún, comenta esto y usa un string fijo temporalmente
+    if (generateHint) {
+        const hint = await generateHint(
+            `Ejercicio: ${currentTask.title}`, 
+            currentTask.steps[taskStep], 
+            currentUserInput
+        );
+        setTaskFeedback(`💡 PISTA: ${hint}`);
+    } else {
+        setTaskFeedback("💡 Pista: Revisa los ejemplos de la documentación.");
     }
   };
 
@@ -189,8 +193,10 @@ const Learning: React.FC = () => {
           task={currentTask} 
           onClose={() => setCurrentTask(null)}
           onCheckAnswer={handleCheckAnswer}
-          // @ts-ignore - Descomenta la siguiente línea si ya actualizaste TaskInterfaceProps
-          isValidating={isValidating} 
+          // ✅ Pasamos la nueva función de ayuda
+          // @ts-ignore (Agrega onGetHint a tu interfaz en TaskInterface)
+          onGetHint={handleGetHint} 
+          isValidating={isValidating || isStreaming} 
         />
       ) : (
         <>
