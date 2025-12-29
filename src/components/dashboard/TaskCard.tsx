@@ -4,7 +4,7 @@ import { CheckCircle, Clock, ArrowRight } from 'lucide-react';
 import { useAppContext, type Task } from '../../context/AppContext';
 
 interface TaskCardProps {
-  tasks: number;
+  tasks?: number;
 }
 
 const TaskCard: React.FC<TaskCardProps> = ({ tasks }) => {
@@ -23,30 +23,30 @@ const TaskCard: React.FC<TaskCardProps> = ({ tasks }) => {
         "print('Mi edad es ' + edad)": "Error: No puedes concatenar cadenas con números sin convertirlos primero"
       }
     },
-    { 
-      id: 'task-2',
-      title: 'Debug API Lightning',
-      description: 'Soluciona problemas en la API',
-      steps: ["Identifica el error en el endpoint", "Revisa los logs de transacciones", "Prueba con diferentes parámetros"],
-      solution: "curl -X POST https://api.ln.example/pay -d '{\"invoice\": \"lnbc...\", \"amount\": 100}'",
-      reward: 750,
-      errorExamples: {
-        "invoice sin monto": "Error: Las facturas de Lightning deben incluir el monto",
-        "timeout": "Error: El nodo puede estar offline, intenta con otro endpoint"
-      }
-    },
-    { 
-      id: 'task-3',
-      title: 'Revisar documento técnico',
-      description: 'Revisar y mejorar documentación',
-      steps: ["Lee la documentación existente", "Identifica secciones confusas", "Escribe ejemplos claros"],
-      solution: "# Ejemplo de uso\n```python\nimport lightning\ninvoice = lightning.create_invoice(100)\n```",
-      reward: 300,
-      errorExamples: {
-        "ejemplo sin código": "Error: La documentación técnica requiere ejemplos de código reales",
-        "parámetros incompletos": "Error: Especifica todos los parámetros requeridos y opcionales"
-      }
-    }
+    // { 
+    //   id: 'task-2',
+    //   title: 'Debug API Lightning',
+    //   description: 'Soluciona problemas en la API',
+    //   steps: ["Identifica el error en el endpoint", "Revisa los logs de transacciones", "Prueba con diferentes parámetros"],
+    //   solution: "curl -X POST https://api.ln.example/pay -d '{\"invoice\": \"lnbc...\", \"amount\": 100}'",
+    //   reward: 750,
+    //   errorExamples: {
+    //     "invoice sin monto": "Error: Las facturas de Lightning deben incluir el monto",
+    //     "timeout": "Error: El nodo puede estar offline, intenta con otro endpoint"
+    //   }
+    // },
+    // { 
+    //   id: 'task-3',
+    //   title: 'Revisar documento técnico',
+    //   description: 'Revisar y mejorar documentación',
+    //   steps: ["Lee la documentación existente", "Identifica secciones confusas", "Escribe ejemplos claros"],
+    //   solution: "# Ejemplo de uso\n```python\nimport lightning\ninvoice = lightning.create_invoice(100)\n```",
+    //   reward: 300,
+    //   errorExamples: {
+    //     "ejemplo sin código": "Error: La documentación técnica requiere ejemplos de código reales",
+    //     "parámetros incompletos": "Error: Especifica todos los parámetros requeridos y opcionales"
+    //   }
+    // }
   ];
 
   const handleStartTask = (task: Task) => {
@@ -61,7 +61,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ tasks }) => {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h3 className="text-lg font-bold text-gray-800">Tareas Pendientes</h3>
-          <div className="text-2xl font-bold text-purple-600 mt-1">{tasks}</div>
+          <div className="text-2xl font-bold text-purple-600 mt-1">{pendingTasks.length}</div>
         </div>
         <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center text-purple-600">
           <CheckCircle className="w-6 h-6"/>
